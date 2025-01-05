@@ -15,12 +15,119 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <div id="map"></div>
+    <!-- Nav Bar --> 
+    <nav class="top-nav">
+        <div class="nav-content">
+            <div class = "nav-buttons">    
+                <div class="dropdown">
+                    <button id="sidebarToggle" class="sidebar-toggle">
+                        <span class="toggle-text visible">Menu</span>
+                        <span class="toggle-text hidden">Hide Menu</span>
+                    </bytton>
+                    <button class="dropdown-btn">Download</button>
+                    <div class="dropdown-content" id="downloadModal">
+                        <div class="modal-content">
+                            <span class="close">&times;</span>
+                            <h2>Map Download (geoTIFF):</h2>
+                            <p>Download raster data in geoTIFF format.</p>
+                            
+                            <div class="download-section">
+                                <select class="download-select">
+                                    <option value="rectangular">Rectangular Region</option>
+                                </select>
+
+                                <div class="rectangle-inputs">
+                                    <h3>Rectangle</h3>
+                                    <div class="corner-input">
+                                        <label>NE corner:</label>
+                                        <input type="number" id="neLat" step="0.0001" placeholder="45.2247">°N,
+                                        <input type="number" id="neLon" step="0.0001" placeholder="-89.8535">°E
+                                    </div>
+                                    <div class="corner-input">
+                                        <label>SW corner:</label>
+                                        <input type="number" id="swLat" step="0.0001" placeholder="39.3580">°N,
+                                        <input type="number" id="swLon" step="0.0001" placeholder="-96.1035">°E
+                                    </div>
+                                </div>
+
+                                <div class="resolution-section">
+                                    <h3>Resolution</h3>
+                                    <p>Native Resolution: 4000 m (1/24-deg)</p>
+                                    <select class="resolution-select">
+                                        <option value="native">Native Resolution</option>
+                                    </select>
+                                </div>
+
+                                <div class="filename-section">
+                                    <h3>Download File</h3>
+                                    <label>Filename:</label>
+                                    <input type="text" id="filename" value="climateEngine_download">
+                                    <div class="auto-fill">
+                                        <input type="checkbox" id="autoFill">
+                                        <label for="autoFill">Auto-Fill Filename</label>
+                                    </div>
+                                    <button class="download-btn">DOWNLOAD MAP LAYER</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <h2 class="time-period-title">Time Period</h2>
+            <p class="period-record">Period of Record: 2024-05-31 to 2024-06-07</p>
+            
+            <select class="date-range-select">
+                <option value="custom">Custom Date Range</option>
+            </select>
+        
+            <div class="date-inputs">
+                <div class="date-field">
+                    <label>Start Date:</label>
+                    <div class="date-input-container">
+                        <input type="date" id="startDate" 
+                               min="2024-05-31" 
+                               max="2024-06-07" 
+                               value="2024-05-31">
+                        <span class="calendar-icon">📅</span>
+                    </div>
+                </div>
+        
+                <div class="date-field">
+                    <label>End Date:</label>
+                    <div class="date-input-container">
+                        <input type="date" id="endDate" 
+                               min="2024-05-31" 
+                               max="2024-06-07" 
+                               value="2024-06-07">
+                        <span class="calendar-icon">📅</span>
+                    </div>
+                </div>
+        
+                <button id="updateMap" class="update-button">Update Map</button>
+            </div>
+        </div>
+        <div id="map"></div>
+    
+
+    </div>
+
+    
+    
+    
+
+    <!-- Add D3.js first -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     
 
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
     
     <!-- jQuery -->
     <script src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>

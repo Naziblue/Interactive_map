@@ -26,48 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add date picker control
-const datePickerControl = L.control({position: 'topleft'});
-datePickerControl.onAdd = function() {
-    const container = L.DomUtil.create('div', 'time-period-container');
-    container.innerHTML = `
-        <h2 class="time-period-title">Time Period </span></h2>
-        <p class="period-record">Period of Record: 2024-05-31 to 2024-06-07</p>
-        
-        <select class="date-range-select">
-            <option value="custom">Custom Date Range</option>
-        </select>
-
-        <div class="date-inputs">
-            <div class="date-field">
-                <label>Start Date:</label>
-                <div class="date-input-container">
-                    <input type="date" id="startDate" 
-                           min="2024-05-31" 
-                           max="2024-06-07" 
-                           value="2024-05-31">
-                    <span class="calendar-icon">📅</span>
-                </div>
-            </div>
-
-            <div class="date-field">
-                <label>End Date:</label>
-                <div class="date-input-container">
-                    <input type="date" id="endDate" 
-                           min="2024-05-31" 
-                           max="2024-06-07" 
-                           value="2024-06-07">
-                    <span class="calendar-icon">📅</span>
-                </div>
-            </div>
-
-            <button id="updateMap" class="update-button">Update Map</button>
-        </div>
-    `;
-    return container;
-};
-datePickerControl.addTo(map);
-
 // Add event listeners for date inputs
 document.getElementById('startDate').addEventListener('change', validateDates);
 document.getElementById('endDate').addEventListener('change', validateDates);
@@ -80,6 +38,8 @@ function validateDates() {
     if (new Date(endDate) < new Date(startDate)) {
         document.getElementById('endDate').value = startDate;
     }
+
+    return true;
 }
 
     // Add visualization type control
@@ -205,7 +165,7 @@ function validateDates() {
                     temperatureLayer.clearLayers();
                     
                     // Performance optimization settings
-                    const CELL_SIZE = 0.09; // Increased cell size for better performance
+                    const CELL_SIZE = 0.18; // Increased cell size for better performance
                     const SEARCH_RADIUS = 0.9; // Reduced search radius
                     const MAX_POINTS = 5000; // Limit number of points processed
                     const BATCH_SIZE = 100; // Number of cells to process in each batch
@@ -316,8 +276,9 @@ function validateDates() {
                                 L.rectangle(cell.bounds, {
                                     color: getColor(cell.temp),
                                     fillColor: getColor(cell.temp),
-                                    fillOpacity: cell.weight * 0.8,
+                                    fillOpacity: cell.weight * 0.6,
                                     weight: 0,
+                                    stroke:false,
                                     interactive: false
                                 }).addTo(temperatureLayer);
                             });
@@ -524,4 +485,60 @@ function validateDates() {
 
     // Fetch data initially
     fetchData();
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add download button functionality
+    const sidebar = document.getElementById('sidebar')
+    const sidebarToggle =document.getElementById('sidebarToggle');
+
+    sidebarToggle.addEventListener('click', () => {
+        const isHidden =sidebar.classList.toggle('hidden');
+        if (isHidden){
+            map.style.marginLeft= '0';
+        } else{
+            map.style.marginLeft = '300px'
+        }
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 300);
+    })
+    const downloadBtn = document.querySelector('.dropdown-btn');
+    const downloadContent = document.querySelector('.dropdown-content');
+    const closeBtn = document.querySelector('.close');
+
+    downloadBtn.addEventListener('click', () => {
+        downloadContent.style.display = downloadContent.style.display === 'block' ? 'none' : 'block';
+    });
+
+    closeBtn.addEventListener('click', () => {
+        downloadContent.style.display = 'none';
+    });
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+        if (!e.target.matches('.dropdown-btn') && !e.target.closest('.dropdown-content')) {
+            downloadContent.style.display = 'none';
+        }
+    });
+
+    // Auto-populate coordinates from map bounds
+    const map = document.querySelector('#map').__vue__; // Get map instance
+    function updateCoordinates() {
+        const bounds = map.getBounds();
+        document.querySelector('#neLat').value = bounds.getNorth().toFixed(4);
+        document.querySelector('#neLon').value = bounds.getEast().toFixed(4);
+        document.querySelector('#swLat').value = bounds.getSouth().toFixed(4);
+        document.querySelector('#swLon').value = bounds.getWest().toFixed(4);
+    }
+
+    map.on('moveend', updateCoordinates);
+    updateCoordinates(); // Initial update
+
+    // Download button click handler
+    document.querySelector('.download-btn').addEventListener('click', () => {
+        // Implement your download logic here
+        alert('Download functionality will be implemented based on your backend requirements');
+    });
 });

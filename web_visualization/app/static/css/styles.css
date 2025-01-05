@@ -1,3 +1,4 @@
+/* Base styles */
 html, body {
     margin: 0;
     padding: 0;
@@ -5,27 +6,86 @@ html, body {
     width: 100%;
 }
 
-#map {
-    position: absolute;
+/* Navigation Bar */
+.top-nav {
+    position: fixed;
     top: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.time-period-container {
-    position: absolute;
-    top: 20px;
-    left: 60px;
-    opacity: 0.8;
+    left: 0;
+    right: 0;
+    height: 50px;
     background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    z-index: 1000;
-    width: 300px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1001;
 }
 
+.nav-content {
+    padding: 0 20px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+.nav-buttons {
+    display: flex;
+    gap: 10px; /* Space between buttons */
+    align-items: center;
+}
+
+.main-container {
+    position: fixed;
+    top: 50px; /* Below nav bar */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    transition: margin-right 0.3s ease;
+}
+.main-container:not(.sidebar.hidden) {
+    margin-Left: 0;
+
+}
+
+#map {
+    flex: 1;
+    height: 100%;
+    transition: margin-left 0.3s ease;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 50px; /* Below nav bar */
+    left: 0;
+    width: 300px;
+    height: calc(100% - 50px); /* Full height minus nav bar */
+    background: white;
+    box-shadow: -2px 0 4px rgba(0,0,0,0.1);
+    z-index: 999;
+    transition: transform 0.3s ease;
+    padding: 20px;
+    overflow-y: auto;
+    opacity: 0.8;
+    
+}
+
+.sidebar.hidden {
+    transform: translateX(-100%);
+    display: none;
+}
+
+
+.toggle-text.hidden {
+    display: none;
+}
+
+.sidebar.hidden + #map + .sidebar-toggle .toggle-text.visible {
+    display: none;
+}
+
+.sidebar.hidden + #map + .sidebar-toggle .toggle-text.hidden {
+    display: inline;
+}
+
+/* Time Period Section */
 .time-period-title {
     color: #248fa7;
     font-size: 20px;
@@ -35,24 +95,13 @@ html, body {
     gap: 8px;
 }
 
-/*.help-icon {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    background: #e9ecef;
-    border-radius: 50%;
-    text-align: center;
-    line-height: 20px;
-    font-size: 14px;
-    cursor: help;
-}*/
-
 .period-record {
     color: #495057;
     margin: 10px 0;
     font-size: 14px;
 }
 
+/* Form Elements */
 .date-range-select {
     width: 100%;
     padding: 8px;
@@ -94,6 +143,7 @@ html, body {
     pointer-events: none;
 }
 
+/* Buttons */
 .update-button {
     background: #248fa7;
     color: white;
@@ -110,6 +160,41 @@ html, body {
     background: #218838;
 }
 
+/* Dropdown Menu */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-btn, .sidebar-toggle {
+    background: white;
+    color: #248fa7;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.dropdown-btn:hover, .sidebar-toggle:hover {
+    background: #74d0fb;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    min-width: 400px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-top: 5px;
+    z-index: 1002;
+}
+
+/* Loading and Legend */
 .legend {
     background: white;
     padding: 10px;
@@ -123,4 +208,50 @@ html, body {
     padding: 5px 10px;
     border-radius: 5px;
     border: 1px solid #ccc;
+}
+
+/* Download Section */
+.download-section, .resolution-section, .filename-section {
+    margin-top: 20px;
+}
+
+.corner-input {
+    margin: 10px 0;
+}
+
+.corner-input input {
+    width: 80px;
+    padding: 5px;
+    margin: 0 5px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.auto-fill {
+    margin: 10px 0;
+}
+
+.download-btn {
+    width: 100%;
+    padding: 10px;
+    background: #248fa7;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.download-btn:hover {
+    background: #218838;
+}
+
+/* Close Button */
+.close {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    color: #6c757d;
 }
