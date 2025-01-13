@@ -600,6 +600,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.querySelector('.dropdown-btn');
     const downloadContent = document.querySelector('.dropdown-content');
     const closeBtn = document.querySelector('.close');
+    const pdfBtn = document.querySelector('.pdf-btn');
+    console.log('PDF Button:', pdfBtn);
 
     
 
@@ -633,6 +635,70 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#swLat').value = bounds.getSouth().toFixed(4);
         document.querySelector('#swLon').value = bounds.getWest().toFixed(4);
     });
+
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', async () => {
+            try {
+                // Get coordinates from input fields
+                const neLat = document.querySelector('#neLat').value;
+                const neLon = document.querySelector('#neLon').value;
+                const swLat = document.querySelector('#swLat').value;
+                const swLon = document.querySelector('#swLon').value;
+                
+                // Get dates
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+    
+                console.log('PDF Request Data:', { // Debug log
+                    bounds: { neLat, neLon, swLat, swLon },
+                    dates: { startDate, endDate }
+                });
+    
+                // Make request to backend
+                const response = await fetch('/api/download-pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        bounds: {
+                            neLat,
+                            neLon,
+                            swLat,
+                            swLon
+                        },
+                        dates: {
+                            startDate,
+                            endDate
+                        }
+                    })
+                });
+    
+                if (!response.ok) {
+                    console.error('Response status:', response.status); // Debug log
+                    throw new Error('PDF generation failed');
+                }
+    
+                // Convert response to blob and trigger download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'temperature_report.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+    
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                alert('Error generating PDF: ' + error.message);
+            }
+        });
+    } else {
+        console.error('PDF Button not found!'); // Debug: Log if button is not found
+    }
+
     
 
     // Close dropdown when clicking outside
@@ -715,4 +781,12 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Error downloading file: ' + error.message);
         }
     });
+
+
+
+
+    // PDF download button click handler
+    
+
+
 });

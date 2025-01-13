@@ -210,3 +210,110 @@ def download_geotiff():
             "error": str(e),
             "traceback": traceback.format_exc()
         }), 500
+    
+
+
+    # Add PDF
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from io import BytesIO
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+@main_bp.route('/api/download-pdf', methods=['POST'])
+def download_pdf():
+    try:
+        data = request.get_json()
+        bounds = data['bounds']
+        dates = data['dates']
+        
+        # Get the dataset
+        ds = get_dataset()
+        
+        # Select data
+        selected_data = ds['TMP'].sel(
+            time=slice(np.datetime64(dates['startDate']), np.datetime64(dates['endDate'])),
+            lat=slice(float(bounds['swLat']), float(bounds['neLat'])),
+            lon=slice(float(bounds['swLon']), float(bounds['neLon'])),
+            height=2.0
+        )
+        
+        # Calculate statistics
+        mean_temp = float(selected_data.mean().values) - 273.15  # Convert to Celsius
+        max_temp = float(selected_data.max().values) - 273.15
+        min_temp = float(selected_data.min().values) - 273.15
+        std_temp = float(selected_data.std().values)
+        
+        # Create PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30
+        )
+        story.append(Paragraph('Temperature Analysis Report', title_style))
+        
+        # Date Range
+        story.append(Paragraph(f'Date Range: {dates["startDate"]} to {dates["endDate"]}', styles['Heading2']))
+        story.append(Spacer(1, 12))
+        
+        # Area Information
+        story.append(Paragraph('Selected Area:', styles['Heading2']))
+        story.append(Paragraph(f'NE Corner: {bounds["neLat"]}°N, {bounds["neLon"]}°E', styles['Normal']))
+        story.append(Paragraph(f'SW Corner: {bounds["swLat"]}°N, {bounds["swLon"]}°E', styles['Normal']))
+        story.append(Spacer(1, 12))
+        
+        # Statistics Table
+        data = [
+            ['Statistic', 'Value'],
+            ['Mean Temperature', f'{mean_temp:.2f}°C'],
+            ['Maximum Temperature', f'{max_temp:.2f}°C'],
+            ['Minimum Temperature', f'{min_temp:.2f}°C'],
+            ['Standard Deviation', f'{std_temp:.2f}°C']
+        ]
+        
+        table = Table(data, colWidths=[3*inch, 2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(table)
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        return send_file(
+            buffer,
+            download_name='temperature_report.pdf',
+            as_attachment=True,
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        print(f"Error creating PDF: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
