@@ -8,9 +8,23 @@ function updateRectangle() {
     const swLon = parseFloat(document.querySelector('#swLon').value);
     
     if (neLat && neLon && swLat && swLon) {
-        selectionRect.setBounds([[neLat, neLon], [swLat, swLon]]);
+        // Ensure NE corner has higher latitude than SW corner
+        const northLat = Math.max(neLat, swLat);
+        const southLat = Math.min(neLat, swLat);
+        const eastLon = Math.max(neLon, swLon);
+        const westLon = Math.min(neLon, swLon);
+        
+        // Set the bounds with properly ordered coordinates
+        selectionRect.setBounds([
+            [southLat, westLon], // SW corner
+            [northLat, eastLon]  // NE corner
+        ]);
     }
 }
+
+['neLat', 'neLon', 'swLat', 'swLon'].forEach(id => {
+    document.querySelector(`#${id}`).addEventListener('change', updateRectangle);
+});
 document.addEventListener('DOMContentLoaded', function() {
     // Add status display div
     const statusDiv = document.createElement('div');
@@ -40,21 +54,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(map);
 
     // Add rectangle selection
-    selectionRect = L.rectangle([[39.5, -98.35], [40.5, -97.35]], {
+    selectionRect = L.rectangle([[35, -100], [45, -90]], {
         color: '#3388ff',
         weight: 2,
         opacity: 1,
         fillOpacity: 0.3,
         draggable: true,
-        transform: true
+        transform: true,
+        editable:true,
     }).addTo(map);
+
+    selectionRect.on('mouseup', updateSelectionCoordinates);
+    selectionRect.on('drag', updateSelectionCoordinates);
+
+    function updateSelectionCoordinates() {
+        const bounds = selectionRect.getBounds();
+        document.querySelector('#neLat').value = bounds.getNorth().toFixed(4);
+        document.querySelector('#neLon').value = bounds.getEast().toFixed(4);
+        document.querySelector('#swLat').value = bounds.getSouth().toFixed(4);
+        document.querySelector('#swLon').value = bounds.getWest().toFixed(4);
+    }
     
+
     const editableLayer = new L.FeatureGroup();
     map.addLayer(editableLayer);
     editableLayer.addLayer(selectionRect);
 
     new L.Control.Draw({
-        position: 'topright',
+        edit: {
+            featureGroup: editableLayer,
+            rectangle: {
+                showArea: false
+            }
+        },
+        
         draw: {
             rectangle: false,
             circle: false,
@@ -63,9 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
             polyline: false,
             polygon: false
         },
-        edit: {
-            featureGroup: editableLayer
-        }
+        
 }).addTo(map);
 
 // Add event listeners for rectangle changes
@@ -582,6 +613,10 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         selectionRect.addTo(map); // Show rectangle
         updateRectangle(); // Update rectangle position from input values
+
+        if (!selectionRect.editing) {
+            selectionRect.editing.enable();
+        }
     }
     });
    
@@ -591,21 +626,31 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadContent.style.display = 'none';
     });
     
-
+    map.on('draw:edited', function(e) {
+        const bounds = selectionRect.getBounds();
+        document.querySelector('#neLat').value = bounds.getNorth().toFixed(4);
+        document.querySelector('#neLon').value = bounds.getEast().toFixed(4);
+        document.querySelector('#swLat').value = bounds.getSouth().toFixed(4);
+        document.querySelector('#swLon').value = bounds.getWest().toFixed(4);
+    });
     
 
     // Close dropdown when clicking outside
     window.addEventListener('click', (e) => {
-        if (!e.target.matches('.dropdown-btn') && !e.target.closest('.dropdown-content')) {
-            downloadContent.style.display = 'none';
-            selectionRect.remove();
-        }
+        if (e.target.matches('.close') || 
+        (!e.target.matches('.dropdown-btn') && 
+         !e.target.closest('.dropdown-content') && 
+         !e.target.closest('#map'))) {
+        downloadContent.style.display = 'none';
+        selectionRect.remove();
+    }
     });
 
     // Auto-populate coordinates from map bounds
     const mapInstance = map; // Use the map instance from the first event listener
     function updateCoordinates() {
-        const bounds = map.getBounds();
+        // Get rectangle bounds instead of map bounds
+        const bounds = selectionRect.getBounds();
         document.querySelector('#neLat').value = bounds.getNorth().toFixed(4);
         document.querySelector('#neLon').value = bounds.getEast().toFixed(4);
         document.querySelector('#swLat').value = bounds.getSouth().toFixed(4);
