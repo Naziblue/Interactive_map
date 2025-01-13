@@ -1,7 +1,10 @@
-from flask import Blueprint, render_template, jsonify, request, current_app
+from flask import Blueprint, render_template, jsonify, request, current_app, send_file
 import xarray as xr
+import rasterio 
+from rasterio.transform import from_bounds
 import pandas as pd
 import numpy as np
+import tempfile
 import os
 from datetime import datetime
 
@@ -106,3 +109,104 @@ def clear_cache():
         _dataset.close()
         _dataset = None
     return jsonify({"message": "Cache cleared"})
+
+
+#downloading adjustment
+
+@main_bp.route('/api/download-geotiff', methods=['POST'])
+def download_geotiff():
+    try:
+        # Log request parameters
+        print("Received download request parameters:")
+        data = request.get_json()
+        print(f"Request data: {data}")
+
+        # Get cached dataset
+        ds = get_dataset()
+
+        # Select data within the specified bounds and date range
+        bounds = data['bounds']
+        dates = data['dates']
+        filename = data['filename']
+
+        # Convert dates to numpy datetime64
+        start_np = np.datetime64(dates['startDate'])
+        end_np = np.datetime64(dates['endDate'])
+
+        # Select temperature data
+        selected_data = ds['TMP'].sel(
+            time=slice(start_np, end_np),
+            lat=slice(float(bounds['swLat']), float(bounds['neLat'])),
+            lon=slice(float(bounds['swLon']), float(bounds['neLon'])),
+            height=2.0
+        )
+
+        # Calculate mean temperature over the time period
+        mean_temp = selected_data.mean(dim='time')
+        
+        # Convert from Kelvin to Celsius
+        mean_temp = mean_temp - 273.15
+
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(suffix='.tiff', delete=False) as tmp:
+            temp_path = tmp.name
+
+            # Create transform for GeoTIFF
+            transform = from_bounds(
+                float(bounds['swLon']), float(bounds['swLat']),
+                float(bounds['neLon']), float(bounds['neLat']),
+                mean_temp.shape[1], mean_temp.shape[0]
+            )
+
+            # Write to GeoTIFF
+            with rasterio.open(
+                temp_path,
+                'w',
+                driver='GTiff',
+                height=mean_temp.shape[0],
+                width=mean_temp.shape[1],
+                count=1,
+                dtype=mean_temp.dtype,
+                crs='+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs',
+                transform=transform,
+                nodata=-9999
+            ) as dst:
+                dst.write(mean_temp.values.astype('float32'), 1)
+                dst.update_tags(
+                    TIFFTAG_DATETIME=dates['startDate'],
+                    TIFFTAG_DOCUMENTNAME=filename,
+                    TEMPERATURE_UNIT='Celsius',
+                    COLORINTERP_1='GrayIndex'
+                )
+
+                dst.update_tags(
+                    STATISTICS_MINIMUM=float(mean_temp.min()),
+                    STATISTICS_MAXIMUM=float(mean_temp.max()),
+                    STATISTICS_MEAN=float(mean_temp.mean()),
+                    STATISTICS_STDDEV=float(mean_temp.std())
+                )
+
+        # Send file to client
+        response = send_file(
+            temp_path,
+            as_attachment=True,
+            download_name=f"{filename}.tiff",
+            mimetype='image/tiff'
+        )
+        
+        # Clean up temp file after sending
+        @response.call_on_close
+        def cleanup():
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+        return response
+
+    except Exception as e:
+        print(f"Error creating GeoTIFF: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500

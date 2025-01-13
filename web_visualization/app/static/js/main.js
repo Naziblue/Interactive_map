@@ -1,3 +1,16 @@
+let selectionRect; // Declare globally
+let map;
+// Update rectangle when coordinates change
+function updateRectangle() {
+    const neLat = parseFloat(document.querySelector('#neLat').value);
+    const neLon = parseFloat(document.querySelector('#neLon').value);
+    const swLat = parseFloat(document.querySelector('#swLat').value);
+    const swLon = parseFloat(document.querySelector('#swLon').value);
+    
+    if (neLat && neLon && swLat && swLon) {
+        selectionRect.setBounds([[neLat, neLon], [swLat, swLon]]);
+    }
+}
 document.addEventListener('DOMContentLoaded', function() {
     // Add status display div
     const statusDiv = document.createElement('div');
@@ -18,13 +31,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize the Leaflet map centered on the United States
     updateStatus('Initializing map...');
-    const map = L.map('map').setView([39.5, -98.35], 4);
+     map = L.map('map').setView([39.5, -98.35], 4);
     
     // Add a tile layer to the map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
+
+    // Add rectangle selection
+    selectionRect = L.rectangle([[39.5, -98.35], [40.5, -97.35]], {
+        color: '#3388ff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.3,
+        draggable: true,
+        transform: true
+    }).addTo(map);
+    
+    const editableLayer = new L.FeatureGroup();
+    map.addLayer(editableLayer);
+    editableLayer.addLayer(selectionRect);
+
+    new L.Control.Draw({
+        position: 'topright',
+        draw: {
+            rectangle: false,
+            circle: false,
+            circlemarker: false,
+            marker: false,
+            polyline: false,
+            polygon: false
+        },
+        edit: {
+            featureGroup: editableLayer
+        }
+}).addTo(map);
+
+// Add event listeners for rectangle changes
+selectionRect.on('edit', function(e) {
+    const bounds = selectionRect.getBounds();
+    document.querySelector('#neLat').value = bounds.getNorth().toFixed(4);
+    document.querySelector('#neLon').value = bounds.getEast().toFixed(4);
+    document.querySelector('#swLat').value = bounds.getSouth().toFixed(4);
+    document.querySelector('#swLon').value = bounds.getWest().toFixed(4);
+
+});
+
+
+
+
+
+
+// Add event listeners to coordinate inputs
+['neLat', 'neLon', 'swLat', 'swLon'].forEach(id => {
+    document.querySelector(`#${id}`).addEventListener('change', updateRectangle);
+});
 
 // Add event listeners for date inputs
 document.getElementById('startDate').addEventListener('change', validateDates);
@@ -508,23 +570,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadContent = document.querySelector('.dropdown-content');
     const closeBtn = document.querySelector('.close');
 
-    downloadBtn.addEventListener('click', () => {
-        downloadContent.style.display = downloadContent.style.display === 'block' ? 'none' : 'block';
-    });
+    
 
+    // Show/hide rectangle with download modal
+    downloadBtn.addEventListener('click', () => {
+        const isVisible = downloadContent.style.display === 'block';
+    downloadContent.style.display = isVisible ? 'none' : 'block';
+    
+    if (isVisible) {
+        selectionRect.remove(); // Hide rectangle
+    } else {
+        selectionRect.addTo(map); // Show rectangle
+        updateRectangle(); // Update rectangle position from input values
+    }
+    });
+   
+    // hide rectangle when closing modal
     closeBtn.addEventListener('click', () => {
+        selectionRect.remove();
         downloadContent.style.display = 'none';
     });
+    
+
+    
 
     // Close dropdown when clicking outside
     window.addEventListener('click', (e) => {
         if (!e.target.matches('.dropdown-btn') && !e.target.closest('.dropdown-content')) {
             downloadContent.style.display = 'none';
+            selectionRect.remove();
         }
     });
 
     // Auto-populate coordinates from map bounds
-    const map = document.querySelector('#map').__vue__; // Get map instance
+    const mapInstance = map; // Use the map instance from the first event listener
     function updateCoordinates() {
         const bounds = map.getBounds();
         document.querySelector('#neLat').value = bounds.getNorth().toFixed(4);
@@ -537,8 +616,58 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCoordinates(); // Initial update
 
     // Download button click handler
-    document.querySelector('.download-btn').addEventListener('click', () => {
-        // Implement your download logic here
-        alert('Download functionality will be implemented based on your backend requirements');
+    document.querySelector('.download-btn').addEventListener('click', async () => {
+        try {
+            // Get coordinates from input fields
+            const neLat = document.querySelector('#neLat').value;
+            const neLon = document.querySelector('#neLon').value;
+            const swLat = document.querySelector('#swLat').value;
+            const swLon = document.querySelector('#swLon').value;
+            
+            // Get dates
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            // Get filename
+            const filename = document.getElementById('filename').value || 'climateEngine_download';
+    
+            // Make request to backend
+            const response = await fetch('/api/download-geotiff', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    bounds: {
+                        neLat,
+                        neLon,
+                        swLat,
+                        swLon
+                    },
+                    dates: {
+                        startDate,
+                        endDate
+                    },
+                    filename
+                })
+            });
+    
+            if (!response.ok) throw new Error('Download failed');
+    
+            // Convert response to blob and trigger download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.tiff`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+    
+        } catch (error) {
+            console.error('Download error:', error);
+            alert('Error downloading file: ' + error.message);
+        }
     });
 });
