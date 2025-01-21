@@ -20,7 +20,7 @@ This web application provides interactive visualization of weather data using a 
 
 ## Project Structure
 ```
-project/
+web_visualization/
 ├── app/
 │   ├── static/
 │   │   ├── css/
